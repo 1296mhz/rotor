@@ -13,6 +13,10 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 #define ELSENSOR A3        // Номер пина для аналогового датчика элевации
 #define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок
 
+//петля усреднения
+const int numReadings = 25;
+int readIndex = 0;
+
 int azAngle = 0;          // Угол азимута
 int azOldSensorValue = 0; // Предыдущее значение с датчика азимута
 int azTarget = 300;       // Цель для поворота
@@ -20,6 +24,9 @@ boolean azMove = false;   // Флаг включения/отключения в
 String strAzAngle;        // Текущее положение антенны
 String strAzTarget;       // Цель для перемещения
 int azCorrect = 0;        // Коррекция азимута нуля градусов
+int azimuth[numReadings]; // the readings from the analog input
+int totalAz = 0;
+int averageAz = 0; // усреднение азимута
 
 int elAngle = 0;
 int elOldSensorValue = 0;
@@ -28,19 +35,17 @@ boolean elMove = false;
 String strElAngle;
 String strElTarget;
 int elCorrect = 0;
+int elevation[numReadings];
+int totalEl = 0;
+int averageEl = 0; // усреднение элевации
 
+// Кнопки
 int adcKeyOld;
 int adcKeyIn;
 int NUM_KEYS = 5;
 int key = -1;
 int adcKeyVal[5] = {30, 150, 360, 535, 760}; //Define the value at A0 pin
 
-//averaging loop
-const int numReadings = 25;
-int azimuth[numReadings]; // the readings from the analog input
-int totalAz = 0;
-int averageAz = 0; // the average
-int readIndex = 0; // the index of the current reading
 void clearLine(int line)
 {
   lcd.setCursor(0, 1);
@@ -56,8 +61,18 @@ void printDisplay(String message)
   clearLine(1);
 }
 
+void initSensorAvarage()
+{
+  for (int thisReading = 0; thisReading < numReadings; thisReading++)
+  {
+    azimuth[thisReading] = 0;
+    elevation[numReadings] = 0;
+  }
+}
+
 int azSensor()
 {
+
   // AVERAGING LOOP - subtract the last reading:
   totalAz = totalAz - azimuth[readIndex];
   // Читакм сенсор
@@ -91,11 +106,33 @@ int azSensor()
 
 int elSensor()
 {
+  //ELEVATION AVERAGING LOOP
+  totalEl = totalEl - elevation[readIndex];
+  elevation[readIndex] = analogRead(ELSENSOR);
+  
+  totalEl = totalEl + elevation[readIndex];
+  readIndex = readIndex + 1;
+  if (readIndex >= numReadings)
+  {
+    readIndex = 0;
+  }
+  averageEl = totalEl / numReadings;
+  elAngle = ((averageEl - 2) * 1.025);
+  elAngle = int(elAngle / 11.3); // значения элевации 0-90
+  if (elAngle < 0)
+  {
+    elAngle = 0;
+  }
+  if (elAngle > 90)
+  {
+    elAngle = 90;
+  }
 }
 
 void getSensors()
 {
   azSensor();
+  elSensor();
 }
 
 void getKeys()
@@ -215,6 +252,7 @@ void setup()
   lcd.print("ELT");
   lcd.setCursor(7, 1);
   lcd.print("ELA");
+  initSensorAvarage();
   getSensors();
 }
 
