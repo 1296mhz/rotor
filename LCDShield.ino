@@ -102,7 +102,7 @@ void getKeys()
 {
   adcKeyIn = analogRead(ANALOG_KEYS_PIN);
 
-  adcKeyIn = get_key(adcKeyIn);
+  adcKeyIn = getKey(adcKeyIn);
   if (adcKeyIn == 0)
   {
     delay(500);
@@ -179,7 +179,7 @@ void ccw(int currentAz)
 void up() {}
 void down() {}
 
-int get_key(unsigned int input)
+int getKey(unsigned int input)
 {
   int k;
   for (k = 0; k < NUM_KEYS; k++)
