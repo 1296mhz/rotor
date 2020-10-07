@@ -138,7 +138,7 @@ void cw(int currentAz)
 {
   if (currentAz < 359) {
     digitalWrite(PIN_CW, LOW);
-    lcd.setCursor(14, 0);
+    lcd.setCursor(15, 0);
     lcd.print(">");
     digitalWrite(PIN_CCW, HIGH);
   } else {
@@ -151,7 +151,7 @@ void ccw(int currentAz)
 {
   if (currentAz > 0) {
     digitalWrite(PIN_CCW, LOW);
-    lcd.setCursor(14, 0);
+    lcd.setCursor(15, 0);
     lcd.print("<");
     digitalWrite(PIN_CW, HIGH);
   } else {
@@ -182,14 +182,19 @@ void setup()
   pinMode(AZSENSOR, INPUT);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
-  lcd.print("R8CDF ROTATOR");
+  lcd.print(" R8CDF ROTATOR");
   delay(1000);
   lcd.setCursor(0, 0);
-  lcd.print("             ");
+  lcd.print("                ");
   lcd.setCursor(0, 0);
   lcd.print("AZT");
   lcd.setCursor(0, 1);
   lcd.print("AZA");
+
+  lcd.setCursor(7, 0);
+  lcd.print("ELT");
+  lcd.setCursor(7, 1);
+  lcd.print("ELA");
   getSensors();
 }
 
@@ -197,17 +202,13 @@ void loop()
 {
 
   getSensors();
-
   getKeys();
-
-  lcd.setCursor(13, 0);
-  lcd.print(azMove);
 
   if (azMove)
   {
     if (azTarget == azAngle)
     {
-      lcd.setCursor(14, 0);
+      lcd.setCursor(15, 0);
       lcd.print(" ");
       digitalWrite(PIN_CW, LOW);
       digitalWrite(PIN_CCW, LOW);
