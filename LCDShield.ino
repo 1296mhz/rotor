@@ -276,10 +276,10 @@ void loop()
   strAzTarget = AzElString(azTarget);
 
   // Отображение елевации цели антенны
-  lcd.setCursor(9, 0);
+  lcd.setCursor(10, 0);
   lcd.print(strElTarget);
   // Отображение элевации
-  lcd.setCursor(8, 1);
+  lcd.setCursor(10, 1);
   lcd.print(strElAngle);
   // Отображение данных с датчика элевации
   strElAngle = AzElString(elAngle);
