@@ -3,24 +3,23 @@
 const int rs = 8, en = 9, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-
 // Реле
 #define PIN_CCW 3          // Поворот против часовой стрелки
 #define PIN_CW 2           // Поворот по часовой стрелки
 #define PIN_UP 11          // Актуатор вверх
 #define PIN_DOWN 12        // Актуатор вниз
-#define STEP 1             // Шаг 
+#define STEP 1             // Шаг
 #define AZSENSOR A2        // Номер пина для аналогового датчика азимута
+#define ELSENSOR A3        // Номер пина для аналогового датчика элевации
 #define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок
 
-int azAngle = 0;           // Угол азимута
-int azOldSensorValue = 0;  // Предыдущее значение с датчика азимута
-int azTarget = 300;        // Цель для поворота
-boolean azMove = false;    // Флаг включения/отключения вращения по азимуту
-String strAzAngle;         // Текущее положение антенны
-String strAzTarget;        // Цель для перемещения
-int azCorrect = 0;
-
+int azAngle = 0;          // Угол азимута
+int azOldSensorValue = 0; // Предыдущее значение с датчика азимута
+int azTarget = 300;       // Цель для поворота
+boolean azMove = false;   // Флаг включения/отключения вращения по азимуту
+String strAzAngle;        // Текущее положение антенны
+String strAzTarget;       // Цель для перемещения
+int azCorrect = 0;        // Коррекция азимута нуля градусов
 
 int elAngle = 0;
 int elOldSensorValue = 0;
@@ -34,14 +33,14 @@ int adcKeyOld;
 int adcKeyIn;
 int NUM_KEYS = 5;
 int key = -1;
-int adcKeyVal[5] = {30, 150, 360, 535, 760 }; //Define the value at A0 pin
+int adcKeyVal[5] = {30, 150, 360, 535, 760}; //Define the value at A0 pin
 
 //averaging loop
 const int numReadings = 25;
-int azimuth[numReadings];      // the readings from the analog input
+int azimuth[numReadings]; // the readings from the analog input
 int totalAz = 0;
-int averageAz = 0;                // the average
-int readIndex = 0;              // the index of the current reading
+int averageAz = 0; // the average
+int readIndex = 0; // the index of the current reading
 void clearLine(int line)
 {
   lcd.setCursor(0, 1);
@@ -57,7 +56,8 @@ void printDisplay(String message)
   clearLine(1);
 }
 
-int azSensor() {
+int azSensor()
+{
   // AVERAGING LOOP - subtract the last reading:
   totalAz = totalAz - azimuth[readIndex];
   // Читакм сенсор
@@ -67,7 +67,8 @@ int azSensor() {
   // перейти к следующей позиции в массиве
   readIndex = readIndex + 1;
   // если мы в конце массива ...
-  if (readIndex >= numReadings) {
+  if (readIndex >= numReadings)
+  {
     // ...еще раз
     readIndex = 0;
   }
@@ -75,19 +76,21 @@ int azSensor() {
   averageAz = totalAz / numReadings;
   //  Serial.println(averageAz);
   azAngle = (averageAz - 86) * 1.127;
-  azAngle = int(azAngle / 2.842);    // azimuth value 0-359
-  if (azAngle < 0) {
+  azAngle = int(azAngle / 2.842); // azimuth value 0-359
+  if (azAngle < 0)
+  {
     azAngle = 0;
   }
-  if (azAngle > 359) {
+  if (azAngle > 359)
+  {
     azAngle = 359; // keep values between limits
   }
 
   return azAngle;
 }
 
-int elSensor(){
-
+int elSensor()
+{
 }
 
 void getSensors()
@@ -95,23 +98,27 @@ void getSensors()
   azSensor();
 }
 
-void getKeys() {
+void getKeys()
+{
   adcKeyIn = analogRead(ANALOG_KEYS_PIN);
 
   adcKeyIn = get_key(adcKeyIn);
-  if (adcKeyIn == 0) {
+  if (adcKeyIn == 0)
+  {
     delay(500);
     if (azTarget + STEP <= 359)
       azTarget += STEP;
   }
 
-  if (adcKeyIn == 3) {
+  if (adcKeyIn == 3)
+  {
     delay(300);
     if (azTarget - STEP >= 0)
       azTarget -= STEP;
   }
 
-  if (adcKeyIn == 4) {
+  if (adcKeyIn == 4)
+  {
     delay(300);
     azMove = true;
     strAzTarget = AzElString(azTarget);
@@ -141,28 +148,36 @@ String AzElString(int someIntVolue)
 
 void cw(int currentAz)
 {
-  if (currentAz < 359) {
+  if (currentAz < 359)
+  {
     digitalWrite(PIN_CW, LOW);
     lcd.setCursor(15, 0);
     lcd.print(">");
     digitalWrite(PIN_CCW, HIGH);
-  } else {
+  }
+  else
+  {
     digitalWrite(PIN_CW, LOW);
   }
-
 }
 
 void ccw(int currentAz)
 {
-  if (currentAz > 0) {
+  if (currentAz > 0)
+  {
     digitalWrite(PIN_CCW, LOW);
     lcd.setCursor(15, 0);
     lcd.print("<");
     digitalWrite(PIN_CW, HIGH);
-  } else {
+  }
+  else
+  {
     digitalWrite(PIN_CCW, LOW);
   }
 }
+
+void up() {}
+void down() {}
 
 int get_key(unsigned int input)
 {
@@ -175,7 +190,7 @@ int get_key(unsigned int input)
     }
   }
   if (k >= NUM_KEYS)
-    k = -1;     // No valid key pressed
+    k = -1; // No valid key pressed
   return k;
 }
 
@@ -231,33 +246,43 @@ void loop()
     }
   }
 
-  //getSensors();
+  if (elMove)
+  {
+    if (elTarget - elAngle >= 1)
+    {
+      up();
+    }
+
+    if (elAngle - elTarget >= 1)
+    {
+      down();
+    }
+
+    if (elTarget == elAngle)
+    {
+      elMove = false;
+    }
+  }
+
   // Отображение азимута текущей цели антенны
   lcd.setCursor(3, 0);
   lcd.print(strAzTarget);
   // Отображение азимута текущего положения антенны
   lcd.setCursor(3, 1);
   lcd.print(strAzAngle);
-  // Отображение данных с датчика
+  // Отображение данных с датчика азимута
   strAzAngle = AzElString(azAngle);
-  // Отображение цели
+  // Отображение цели азимута
   strAzTarget = AzElString(azTarget);
-
-
 
   // Отображение елевации цели антенны
   lcd.setCursor(9, 0);
   lcd.print(strElTarget);
-
   // Отображение элевации
   lcd.setCursor(8, 1);
   lcd.print(strElAngle);
-
   // Отображение данных с датчика элевации
   strElAngle = AzElString(elAngle);
-
-  // Отображение данных с датчика элевации
+  // Отображение цели элевации
   strElTarget = AzElString(elTarget);
-
-
 }
