@@ -17,19 +17,24 @@ int azAngle = 0;           // Угол азимута
 int azOldSensorValue = 0;  // Предыдущее значение с датчика азимута
 int azTarget = 300;        // Цель для поворота
 boolean azMove = false;    // Флаг включения/отключения вращения по азимуту
-
-//Переменная для отображения азимута  в режиме MANUAL
 String strAzAngle;         // Текущее положение антенны
 String strAzTarget;        // Цель для перемещения
+int azCorrect = 0;
+
+
+int elAngle = 0;
+int elOldSensorValue = 0;
+int elTarget = 0;
+boolean elMove = false;
+String strElAngle;
+String strElTarget;
+int elCorrect = 0;
 
 int adcKeyOld;
 int adcKeyIn;
 int NUM_KEYS = 5;
 int key = -1;
 int adcKeyVal[5] = {30, 150, 360, 535, 760 }; //Define the value at A0 pin
-
-int azCorrect = 0;
-int elCorrect = 0;
 
 //averaging loop
 const int numReadings = 25;
@@ -109,10 +114,10 @@ void getKeys() {
   if (adcKeyIn == 4) {
     delay(300);
     azMove = true;
-    strAzTarget = AzElString(azTarget, false);
+    strAzTarget = AzElString(azTarget);
   }
 };
-String AzElString(int someIntVolue, bool el)
+String AzElString(int someIntVolue)
 {
   if (someIntVolue < 0)
   {
@@ -234,7 +239,25 @@ void loop()
   lcd.setCursor(3, 1);
   lcd.print(strAzAngle);
   // Отображение данных с датчика
-  strAzAngle = AzElString(azAngle, false);
+  strAzAngle = AzElString(azAngle);
   // Отображение цели
-  strAzTarget = AzElString(azTarget, false);
+  strAzTarget = AzElString(azTarget);
+
+
+
+  // Отображение елевации цели антенны
+  lcd.setCursor(9, 0);
+  lcd.print(strElTarget);
+
+  // Отображение элевации
+  lcd.setCursor(8, 1);
+  lcd.print(strElAngle);
+
+  // Отображение данных с датчика элевации
+  strElAngle = AzElString(elAngle);
+
+  // Отображение данных с датчика элевации
+  strElTarget = AzElString(elTarget);
+
+
 }
