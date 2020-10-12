@@ -10,9 +10,9 @@ LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 #define PIN_DOWN 12        // Актуатор вниз
 #define STEP 1             // Шаг
 #define AZSENSOR A2        // Номер пина для аналогового датчика азимута
-#define ELSENSOR A3        // Номер пина для аналогового датчика элевации
-#define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок
-
+#define ELSENSOR A1        // Номер пина для аналогового датчика элевации
+#define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок A0
+#define ANALOG_KEYS_PIN_A5 A5 // Шина для аналоговых кнопок A5
 //петля усреднения
 const int numReadings = 25;
 int readIndex = 0;
@@ -39,12 +39,14 @@ int elevation[numReadings];
 int totalEl = 0;
 int averageEl = 0; // усреднение элевации
 
+boolean operate = false;
+
 // Кнопки
 int adcKeyOld;
 int adcKeyIn;
 int NUM_KEYS = 5;
 int key = -1;
-int adcKeyVal[5] = {30, 150, 360, 535, 760}; //Define the value at A0 pin
+int adcKeyVal[5] = {30, 180, 360, 535, 760}; //Define the value at A0 pin
 
 void clearLine(int line)
 {
@@ -109,7 +111,7 @@ int elSensor()
   //ELEVATION AVERAGING LOOP
   totalEl = totalEl - elevation[readIndex];
   elevation[readIndex] = analogRead(ELSENSOR);
-  
+
   totalEl = totalEl + elevation[readIndex];
   readIndex = readIndex + 1;
   if (readIndex >= numReadings)
@@ -117,15 +119,19 @@ int elSensor()
     readIndex = 0;
   }
   averageEl = totalEl / numReadings;
-  elAngle = ((averageEl - 2) * 1.025);
-  elAngle = int(elAngle / 11.3); // значения элевации 0-90
+
+  elAngle = (averageEl - 86) * 1.127;
+  elAngle = int(elAngle / 2.842); // azimuth value 0-359
+
+  // elAngle = ((averageEl - 2) * 1.025);
+  // elAngle = int(elAngle / 11.3); // значения элевации 0-90
   if (elAngle < 0)
   {
     elAngle = 0;
   }
-  if (elAngle > 90)
+  if (elAngle > 359)
   {
-    elAngle = 90;
+    elAngle = 359;
   }
 }
 
@@ -135,14 +141,15 @@ void getSensors()
   elSensor();
 }
 
-void getKeys()
+void getKeysA0()
 {
   adcKeyIn = analogRead(ANALOG_KEYS_PIN);
 
   adcKeyIn = getKey(adcKeyIn);
+  Serial.println(adcKeyIn);
   if (adcKeyIn == 0)
   {
-    delay(500);
+    delay(300);
     if (azTarget + STEP <= 359)
       azTarget += STEP;
   }
@@ -160,7 +167,51 @@ void getKeys()
     azMove = true;
     strAzTarget = AzElString(azTarget);
   }
+
+  if (adcKeyIn == 1)
+  {
+    delay(400);
+    if (elTarget + STEP <= 90)
+      elTarget += STEP;
+  }
+
+  if (adcKeyIn == 2)
+  {
+    delay(400);
+    if (elTarget - STEP >= 0)
+      elTarget -= STEP;
+  }
 };
+
+void getKeysA5()
+{
+  adcKeyIn = analogRead(ANALOG_KEYS_PIN_A5);
+
+  adcKeyIn = getKey(adcKeyIn);
+  Serial.println(adcKeyIn);
+  if (adcKeyIn == 3)
+  {
+    delay(300);
+    azMove = true;
+  }
+  if (adcKeyIn == 2)
+  {
+    delay(300);
+    elMove = true;
+  }
+
+  if (adcKeyIn == 0)
+  {
+    delay(300);
+
+    if (operate) {
+      operate = false;
+    } else {
+      operate = true;
+    }
+  }
+};
+
 String AzElString(int someIntVolue)
 {
   if (someIntVolue < 0)
@@ -260,47 +311,56 @@ void loop()
 {
 
   getSensors();
-  getKeys();
 
-  if (azMove)
-  {
-    if (azTarget == azAngle)
+  getKeysA5();
+  if (operate) {
+    getKeysA0();
+    if (azMove)
     {
-      lcd.setCursor(15, 0);
-      lcd.print(" ");
-      digitalWrite(PIN_CW, LOW);
-      digitalWrite(PIN_CCW, LOW);
-      azMove = false;
+      if (azTarget == azAngle)
+      {
+        lcd.setCursor(15, 0);
+        lcd.print(" ");
+        digitalWrite(PIN_CW, LOW);
+        digitalWrite(PIN_CCW, LOW);
+        azMove = false;
+      }
+
+      if (azTarget - azAngle >= 1)
+      {
+        cw(azAngle);
+      }
+
+      if (azAngle - azTarget >= 1)
+      {
+        ccw(azAngle);
+      }
     }
 
-    if (azTarget - azAngle >= 1)
+    if (elMove)
     {
-      cw(azAngle);
-    }
+      if (elTarget - elAngle >= 1)
+      {
+        up();
+      }
 
-    if (azAngle - azTarget >= 1)
-    {
-      ccw(azAngle);
+      if (elAngle - elTarget >= 1)
+      {
+        down();
+      }
+
+      if (elTarget == elAngle)
+      {
+        elMove = false;
+      }
     }
   }
 
-  if (elMove)
-  {
-    if (elTarget - elAngle >= 1)
-    {
-      up();
-    }
 
-    if (elAngle - elTarget >= 1)
-    {
-      down();
-    }
+  // Operate
+  lcd.setCursor(15, 1);
+  lcd.print(operate);
 
-    if (elTarget == elAngle)
-    {
-      elMove = false;
-    }
-  }
 
   // Отображение азимута текущей цели антенны
   lcd.setCursor(3, 0);
