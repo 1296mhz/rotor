@@ -39,7 +39,7 @@ int elevation[numReadings];
 int totalEl = 0;
 int averageEl = 0; // усреднение элевации
 
-boolean operate = true;
+boolean operate = false;
 
 // Кнопки
 int adcKeyOld;
@@ -52,6 +52,16 @@ byte heart[8] = { 0b00000, 0b01010, 0b11111, 0b11111, 0b11111, 0b01110, 0b00100,
 
 byte upArrow[8] = { 0b00000, 0b00000, 0b00100, 0b01010, 0b10001, 0b00000, 0b00000, 0b00000 };
 byte dwArrow[8] = { 0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b00000, 0b00000, 0b00000 };
+
+byte queue[8] = { 0b00001,
+                  0b00011,
+                  0b00001,
+                  0b00100,
+                  0b00110,
+                  0b10100,
+                  0b11000,
+                  0b10000
+                };
 
 void clearLine(int line)
 {
@@ -168,9 +178,9 @@ void getKeysA0()
 
   if (adcKeyIn == 4)
   {
-    delay(300);
-    azMove = true;
-    strAzTarget = AzElString(azTarget);
+    // delay(300);
+    // azMove = true;
+    // strAzTarget = AzElString(azTarget);
   }
 
   if (adcKeyIn == 1)
@@ -194,16 +204,19 @@ void getKeysA5()
 
   adcKeyIn = getKey(adcKeyIn);
   Serial.println(adcKeyIn);
-  if (adcKeyIn == 3)
-  {
-    delay(300);
-    azMove = true;
+  if (operate) {
+    if (adcKeyIn == 3)
+    {
+      delay(300);
+      azMove = true;
+    }
+    if (adcKeyIn == 2)
+    {
+      delay(300);
+      elMove = true;
+    }
   }
-  if (adcKeyIn == 2)
-  {
-    delay(300);
-    elMove = true;
-  }
+
 
   if (adcKeyIn == 0)
   {
@@ -301,7 +314,7 @@ void up(boolean elMoveFlag) {
   }
 }
 void down(boolean elMoveFlag) {
-    if (elMoveFlag)
+  if (elMoveFlag)
   {
     digitalWrite(PIN_DOWN, LOW);
     lcd.setCursor(15, 0);
@@ -311,7 +324,8 @@ void down(boolean elMoveFlag) {
   else
   {
     digitalWrite(PIN_DOWN, LOW);
-  }}
+  }
+}
 
 int getKey(unsigned int input)
 {
@@ -328,6 +342,19 @@ int getKey(unsigned int input)
   return k;
 }
 
+void queueIndicate() {
+  if (!operate) {
+    if (azMove || elMove) {
+      lcd.setCursor(13, 0);
+      lcd.print(char(4));
+    } else {
+      lcd.setCursor(13, 0);
+      lcd.print(" ");
+    }
+  }
+
+}
+
 void setup()
 {
   Serial.begin(9600);
@@ -342,6 +369,7 @@ void setup()
   lcd.createChar(1, heart);
   lcd.createChar(2, upArrow);
   lcd.createChar(3, dwArrow);
+  lcd.createChar(4, queue);
   lcd.print(" R8CDF ROTATOR");
   delay(1000);
   lcd.setCursor(0, 0);
@@ -412,7 +440,7 @@ void loop()
   lcd.print(azMove);
   lcd.setCursor(15, 1);
   lcd.print(elMove);
-
+  queueIndicate();
   // Отображение азимута текущей цели антенны
   lcd.setCursor(3, 0);
   lcd.print(strAzTarget);
