@@ -39,7 +39,7 @@ int elevation[numReadings];
 int totalEl = 0;
 int averageEl = 0; // усреднение элевации
 
-boolean operate = false;
+boolean operate = true;
 
 // Кнопки
 int adcKeyOld;
@@ -47,6 +47,11 @@ int adcKeyIn;
 int NUM_KEYS = 5;
 int key = -1;
 int adcKeyVal[5] = {30, 180, 360, 535, 760}; //Define the value at A0 pin
+
+byte heart[8] = { 0b00000, 0b01010, 0b11111, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000 };
+
+byte upArrow[8] = { 0b00000, 0b00000, 0b00100, 0b01010, 0b10001, 0b00000, 0b00000, 0b00000 };
+byte dwArrow[8] = { 0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b00000, 0b00000, 0b00000 };
 
 void clearLine(int line)
 {
@@ -206,8 +211,26 @@ void getKeysA5()
 
     if (operate) {
       operate = false;
+      if (azMove) {
+        azMove = false;
+      }
+      if (elMove) {
+        elMove = false;
+      }
+      digitalWrite(PIN_CW, LOW);
+      digitalWrite(PIN_CCW, LOW);
+      digitalWrite(PIN_UP, LOW);
+      digitalWrite(PIN_DOWN, LOW);
+      lcd.setCursor(13, 1);
+      lcd.print(" ");
+      lcd.setCursor(14, 0);
+      lcd.print(" ");
+      lcd.setCursor(15, 0);
+      lcd.print(" ");
     } else {
       operate = true;
+      lcd.setCursor(13, 1);
+      lcd.print(char(1));
     }
   }
 };
@@ -234,12 +257,12 @@ String AzElString(int someIntVolue)
   }
 }
 
-void cw(int currentAz)
+void cw(boolean azMoveFlag)
 {
-  if (currentAz < 359)
+  if (azMoveFlag)
   {
     digitalWrite(PIN_CW, LOW);
-    lcd.setCursor(15, 0);
+    lcd.setCursor(14, 0);
     lcd.print(">");
     digitalWrite(PIN_CCW, HIGH);
   }
@@ -249,12 +272,12 @@ void cw(int currentAz)
   }
 }
 
-void ccw(int currentAz)
+void ccw(boolean azMoveFlag)
 {
-  if (currentAz > 0)
+  if (azMoveFlag)
   {
     digitalWrite(PIN_CCW, LOW);
-    lcd.setCursor(15, 0);
+    lcd.setCursor(14, 0);
     lcd.print("<");
     digitalWrite(PIN_CW, HIGH);
   }
@@ -264,8 +287,31 @@ void ccw(int currentAz)
   }
 }
 
-void up() {}
-void down() {}
+void up(boolean elMoveFlag) {
+  if (elMoveFlag)
+  {
+    digitalWrite(PIN_UP, LOW);
+    lcd.setCursor(15, 0);
+    lcd.print(char(2));
+    digitalWrite(PIN_DOWN, HIGH);
+  }
+  else
+  {
+    digitalWrite(PIN_UP, LOW);
+  }
+}
+void down(boolean elMoveFlag) {
+    if (elMoveFlag)
+  {
+    digitalWrite(PIN_DOWN, LOW);
+    lcd.setCursor(15, 0);
+    lcd.print(char(3));
+    digitalWrite(PIN_UP, HIGH);
+  }
+  else
+  {
+    digitalWrite(PIN_DOWN, LOW);
+  }}
 
 int getKey(unsigned int input)
 {
@@ -285,11 +331,17 @@ int getKey(unsigned int input)
 void setup()
 {
   Serial.begin(9600);
+
   pinMode(PIN_CCW, OUTPUT);
   pinMode(PIN_CW, OUTPUT);
+  pinMode(PIN_UP, OUTPUT);
+  pinMode(PIN_DOWN, OUTPUT);
   pinMode(AZSENSOR, INPUT);
   lcd.begin(16, 2);
   lcd.setCursor(0, 0);
+  lcd.createChar(1, heart);
+  lcd.createChar(2, upArrow);
+  lcd.createChar(3, dwArrow);
   lcd.print(" R8CDF ROTATOR");
   delay(1000);
   lcd.setCursor(0, 0);
@@ -309,9 +361,7 @@ void setup()
 
 void loop()
 {
-
   getSensors();
-
   getKeysA5();
   if (operate) {
     getKeysA0();
@@ -319,7 +369,7 @@ void loop()
     {
       if (azTarget == azAngle)
       {
-        lcd.setCursor(15, 0);
+        lcd.setCursor(14, 0);
         lcd.print(" ");
         digitalWrite(PIN_CW, LOW);
         digitalWrite(PIN_CCW, LOW);
@@ -328,12 +378,12 @@ void loop()
 
       if (azTarget - azAngle >= 1)
       {
-        cw(azAngle);
+        cw(azMove);
       }
 
       if (azAngle - azTarget >= 1)
       {
-        ccw(azAngle);
+        ccw(azMove);
       }
     }
 
@@ -341,12 +391,12 @@ void loop()
     {
       if (elTarget - elAngle >= 1)
       {
-        up();
+        up(elMove);
       }
 
       if (elAngle - elTarget >= 1)
       {
-        down();
+        down(elMove);
       }
 
       if (elTarget == elAngle)
@@ -358,9 +408,10 @@ void loop()
 
 
   // Operate
+  lcd.setCursor(14, 1);
+  lcd.print(azMove);
   lcd.setCursor(15, 1);
-  lcd.print(operate);
-
+  lcd.print(elMove);
 
   // Отображение азимута текущей цели антенны
   lcd.setCursor(3, 0);
