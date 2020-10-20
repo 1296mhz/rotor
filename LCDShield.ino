@@ -38,7 +38,6 @@ int elCorrect = 0;
 int elevation[numReadings];
 int totalEl = 0;
 int averageEl = 0; // усреднение элевации
-
 boolean operate = false;
 
 // Кнопки
@@ -134,12 +133,11 @@ int elSensor()
     readIndex = 0;
   }
   averageEl = totalEl / numReadings;
+  //elAngle = (averageEl - 86) * 1.127;
+  //elAngle = int(elAngle / 2.842); // elevation value 0-359
 
-  elAngle = (averageEl - 86) * 1.127;
-  elAngle = int(elAngle / 2.842); // azimuth value 0-359
-
-  // elAngle = ((averageEl - 2) * 1.025);
-  // elAngle = int(elAngle / 11.3); // значения элевации 0-90
+  elAngle = ((averageEl - 2) * 1.025);
+  elAngle = int(elAngle / 2.842); // elevation value 0-359
   if (elAngle < 0)
   {
     elAngle = 0;
