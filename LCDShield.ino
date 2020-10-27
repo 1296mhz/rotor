@@ -1,18 +1,20 @@
-#include <Wire.h> // Library for I2C communication
+#include <Wire.h>              // Library for I2C communication
 #include <LiquidCrystal_I2C.h> // Library for LCD
 // Wiring: SDA pin is connected to A4 and SCL pin to A5.
 // Connect to LCD via I2C, default address 0x27 (A0-A2 not jumpered)
 LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // address, chars, rows.
 
 // Реле
-#define PIN_CCW 5          // Поворот против часовой стрелки
-#define PIN_CW 4           // Поворот по часовой стрелки
-#define PIN_UP 11          // Актуатор вверх
-#define PIN_DOWN 12        // Актуатор вниз
-#define STEP 1             // Шаг
-#define AZSENSOR A2        // Номер пина для аналогового датчика азимута
-#define ELSENSOR A1        // Номер пина для аналогового датчика элевации
-#define BTN_CW  10
+#define PIN_CCW 4   // Поворот против часовой стрелки
+#define PIN_CW 5    // Поворот по часовой стрелки
+#define PIN_UP 11   // Актуатор вверх
+#define PIN_DOWN 12 // Актуатор вниз
+#define STEP 1      // Шаг
+// Датчики
+#define AZSENSOR A2 // Номер пина для аналогового датчика азимута
+#define ELSENSOR A1 // Номер пина для аналогового датчика элевации
+// Кнопки
+#define BTN_CW 10
 #define BTN_CCW 13
 #define BTN_UP 8
 #define BTN_DOWN 9
@@ -23,7 +25,7 @@ LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // address, chars, rows.
 //#define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок A0
 //#define ANALOG_KEYS_PIN_A5 A5 // Шина для аналоговых кнопок A5
 //петля усреднения
-const int numReadings = 10;
+const int numReadings = 25;
 int readIndexAz = 0;
 int readIndexEl = 0;
 int azAngle = 0;          // Угол азимута
@@ -49,27 +51,19 @@ int totalEl = 0;
 int averageEl = 0; // усреднение элевации
 boolean operate = false;
 
-// Кнопки
-int adcKeyOld;
-int adcKeyIn = 0;
-int NUM_KEYS = 5;
-int key = -1;
-int adcKeyVal[5] = {30, 180, 360, 535, 760}; //Define the value at A0 pin
+byte heart[8] = {0b00000, 0b01010, 0b11111, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000};
 
-byte heart[8] = { 0b00000, 0b01010, 0b11111, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000 };
+byte upArrow[8] = {0b00000, 0b00000, 0b00100, 0b01010, 0b10001, 0b00000, 0b00000, 0b00000};
+byte dwArrow[8] = {0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b00000, 0b00000, 0b00000};
 
-byte upArrow[8] = { 0b00000, 0b00000, 0b00100, 0b01010, 0b10001, 0b00000, 0b00000, 0b00000 };
-byte dwArrow[8] = { 0b00000, 0b00000, 0b10001, 0b01010, 0b00100, 0b00000, 0b00000, 0b00000 };
-
-byte queue[8] = { 0b00001,
-                  0b00011,
-                  0b00001,
-                  0b00100,
-                  0b00110,
-                  0b10100,
-                  0b11000,
-                  0b10000
-                };
+byte queue[8] = {0b00001,
+                 0b00011,
+                 0b00001,
+                 0b00100,
+                 0b00110,
+                 0b10100,
+                 0b11000,
+                 0b10000};
 
 void clearLine(int line)
 {
@@ -95,32 +89,55 @@ void initSensorAvarage()
   }
 }
 
+uint8_t btn(int KEY)
+{
+  bool currentValue = digitalRead(KEY);
+  bool prevValue;
+  if (currentValue != prevValue)
+  {
+    // Что-то изменилось, здесь возможна зона неопределенности
+    // Делаем задержку
+    delay(75);
+
+    currentValue = digitalRead(KEY);
+    return 0;
+  }
+
+  prevValue = currentValue;
+  return 1;
+};
+
 int azSensor()
 {
 
   // AVERAGING LOOP - subtract the last reading:
   totalAz = totalAz - azimuth[readIndexAz];
-  // Читакм сенсор
+  // // Читакм сенсор
   azimuth[readIndexAz] = analogRead(AZSENSOR);
-  // прибавьте показание к итогу
+  // // прибавьте показание к итогу
   totalAz = totalAz + azimuth[readIndexAz];
-  // перейти к следующей позиции в массиве
+  // // перейти к следующей позиции в массиве
   readIndexAz = readIndexAz + 1;
-  // если мы в конце массива ...
+  // // если мы в конце массива ...
   if (readIndexAz >= numReadings)
   {
-    // ...еще раз
-    readIndexAz = 0;
-  }
+  //   // ...еще раз
+     readIndexAz = 0;
+   }
   // calculate the average:
-  averageAz = totalAz / numReadings;
+   averageAz = totalAz / numReadings;
   // Serial.println(averageAz);
-  azAngle = (averageAz - 86) * 1.127;
-  azAngle = int(azAngle / 2.842); // azimuth value 0-359
+   azAngle = (averageAz - 86) * 1.127;
+
+  azAngle = int(azAngle / 1024.0 * 360); // azimuth value 0-359
+
+  // azAngle = int(averageAz / 2.842);
+
   if (azAngle < 0)
   {
     azAngle = 0;
   }
+
   if (azAngle > 359)
   {
     azAngle = 359; // keep values between limits
@@ -144,7 +161,7 @@ int elSensor()
   averageEl = totalEl / numReadings;
   elAngle = (averageEl - 86) * 1.127;
   elAngle = int(elAngle / 2.842); // elevation value 0-359
-  
+
   //elAngle = ((averageEl-2)*1.025);
   //elAngle = int(elAngle/11.3);       // elev value 0-90
   if (elAngle < 0)
@@ -165,99 +182,106 @@ void getSensors()
   elSensor();
 }
 
-// void getKeysA0()
-// {
-//   adcKeyIn = analogRead(ANALOG_KEYS_PIN);
-//     Serial.print("KEYA0: ");
-//   Serial.println(adcKeyIn);
-//   adcKeyIn = getKey(adcKeyIn);
+void getKeysMain()
+{
+  if (btn(BTN_CW) == 0)
+  {
+    delay(50);
+    if (azTarget + STEP <= 359)
+      azTarget += STEP;
+  }
 
-//   if (adcKeyIn == 0)
-//   {
-//     delay(300);
-//     if (azTarget + STEP <= 359)
-//       azTarget += STEP;
-//   }
+  if (btn(BTN_CCW) == 0)
+  {
+    delay(50);
+    if (azTarget - STEP >= 0)
+      azTarget -= STEP;
+  }
 
-//   if (adcKeyIn == 3)
-//   {
-//     delay(300);
-//     if (azTarget - STEP >= 0)
-//       azTarget -= STEP;
-//   }
+  if (btn(BTN_UP) == 0)
+  {
+    delay(50);
+    if (elTarget + STEP <= 90)
+      elTarget += STEP;
+  }
 
-//   if (adcKeyIn == 4)
-//   {
-//     // delay(300);
-//     // azMove = true;
-//     // strAzTarget = AzElString(azTarget);
-//   }
+  if (btn(BTN_DOWN) == 0)
+  {
+    delay(50);
+    if (elTarget - STEP >= 0)
+      elTarget -= STEP;
+  }
 
-//   if (adcKeyIn == 1)
-//   {
-//     delay(400);
-//     if (elTarget + STEP <= 90)
-//       elTarget += STEP;
-//   }
+  if (btn(BTN_APPLY_AZ) == 0)
+  {
+    delay(50);
+    azMove = true;
+  }
 
-//   if (adcKeyIn == 2)
-//   {
-//     delay(400);
-//     if (elTarget - STEP >= 0)
-//       elTarget -= STEP;
-//   }
-// };
+  if (btn(BTN_APPLY_EL) == 0)
+  {
+    delay(50);
+    elMove = true;
+  }
 
-// void getKeysA5()
-// {
-//   adcKeyIn = analogRead(ANALOG_KEYS_PIN_A5);
-//   Serial.print("KEYA5: ");
-//   Serial.println(adcKeyIn);
-//   adcKeyIn = getKey(adcKeyIn);
+  // if (btn(BTN_MODE) == 1)
+  // {
+  // }
+}
 
-//   if (operate) {
-//     if (adcKeyIn == 3)
-//     {
-//       delay(300);
-//       azMove = true;
-//     }
-//     if (adcKeyIn == 2)
-//     {
-//       delay(300);
-//       elMove = true;
-//     }
-//   }
+void getKeysOperate()
+{
+  if (operate)
+  {
+    if (btn(BTN_APPLY_AZ) == 0)
+    {
+      delay(50);
+      azMove = true;
+    }
 
+    if (btn(BTN_APPLY_EL) == 0)
+    {
+      delay(50);
+      elMove = true;
+    }
+  }
 
-//   if (adcKeyIn == 0)
-//   {
-//     delay(300);
+  if (btn(BTN_OPERATE) == 0)
+  {
+    delay(100);
+    if (operate)
+    {
+      operate = false;
 
-//     if (operate) {
-//       operate = false;
-//       if (azMove) {
-//         azMove = false;
-//       }
-//       if (elMove) {
-//         elMove = false;
-//       }
-//       digitalWrite(PIN_CW, LOW);
-//       digitalWrite(PIN_CCW, LOW);
-//       digitalWrite(PIN_UP, LOW);
-//       digitalWrite(PIN_DOWN, LOW);
-//       lcd.setCursor(13, 1);
-//       lcd.print(" ");
-//       lcd.setCursor(14, 0);
-//       lcd.print(" ");
-//       lcd.setCursor(15, 0);
-//       lcd.print(" ");
-//     } else {
-//       operate = true;
-//       lcd.setCursor(13, 1);
-//       lcd.print(char(1));
-//     }
-//   }
-// };
+      if (azMove)
+      {
+        azMove = false;
+      }
+
+      if (elMove)
+      {
+        elMove = false;
+      }
+
+      digitalWrite(PIN_CW, LOW);
+      digitalWrite(PIN_CCW, LOW);
+      digitalWrite(PIN_UP, LOW);
+      digitalWrite(PIN_DOWN, LOW);
+      lcd.setCursor(13, 1);
+      lcd.print(" ");
+      lcd.setCursor(14, 0);
+      lcd.print(" ");
+      lcd.setCursor(15, 0);
+      lcd.print(" ");
+    }
+    else
+    {
+      operate = true;
+      lcd.setCursor(13, 1);
+      lcd.print(char(1));
+    }
+  }
+}
 
 String AzElString(int someIntVolue)
 {
@@ -311,7 +335,8 @@ void ccw(boolean azMoveFlag)
   }
 }
 
-void up(boolean elMoveFlag) {
+void up(boolean elMoveFlag)
+{
   if (elMoveFlag)
   {
     digitalWrite(PIN_UP, LOW);
@@ -324,7 +349,8 @@ void up(boolean elMoveFlag) {
     digitalWrite(PIN_UP, LOW);
   }
 }
-void down(boolean elMoveFlag) {
+void down(boolean elMoveFlag)
+{
   if (elMoveFlag)
   {
     digitalWrite(PIN_DOWN, LOW);
@@ -338,17 +364,21 @@ void down(boolean elMoveFlag) {
   }
 }
 
-void queueIndicate() {
-  if (!operate) {
-    if (azMove || elMove) {
+void queueIndicate()
+{
+  if (!operate)
+  {
+    if (azMove || elMove)
+    {
       lcd.setCursor(13, 0);
       lcd.print(char(4));
-    } else {
+    }
+    else
+    {
       lcd.setCursor(13, 0);
       lcd.print(" ");
     }
   }
-
 }
 
 void setup()
@@ -361,6 +391,16 @@ void setup()
   pinMode(PIN_DOWN, OUTPUT);
   pinMode(AZSENSOR, INPUT);
   pinMode(ELSENSOR, INPUT);
+
+  pinMode(BTN_OPERATE, INPUT_PULLUP);
+  pinMode(BTN_APPLY_AZ, INPUT_PULLUP);
+  pinMode(BTN_APPLY_EL, INPUT_PULLUP);
+  pinMode(BTN_MODE, INPUT_PULLUP);
+  pinMode(BTN_CW, INPUT_PULLUP);
+  pinMode(BTN_CCW, INPUT_PULLUP);
+  pinMode(BTN_UP, INPUT_PULLUP);
+  pinMode(BTN_DOWN, INPUT_PULLUP);
+
   lcd.begin(20, 4);
   lcd.backlight();
   lcd.setCursor(0, 0);
@@ -376,7 +416,6 @@ void setup()
   lcd.print("AZT");
   lcd.setCursor(0, 1);
   lcd.print("AZA");
-
   lcd.setCursor(7, 0);
   lcd.print("ELT");
   lcd.setCursor(7, 1);
@@ -388,9 +427,11 @@ void setup()
 void loop()
 {
   getSensors();
+  getKeysOperate();
 
-  if (operate) {
-
+  if (operate)
+  {
+    getKeysMain();
     if (azMove)
     {
       if (azTarget == azAngle)
@@ -402,14 +443,13 @@ void loop()
         azMove = false;
       }
 
-      if (azTarget - azAngle >= 1)
-      {
-        cw(azMove);
-      }
-
       if (azAngle - azTarget >= 1)
       {
         ccw(azMove);
+      }
+      if (azTarget - azAngle >= 1)
+      {
+        cw(azMove);
       }
     }
 
@@ -434,7 +474,6 @@ void loop()
       }
     }
   }
-
 
   // Operate
   lcd.setCursor(14, 1);
