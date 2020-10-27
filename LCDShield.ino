@@ -1,18 +1,27 @@
-#include <LiquidCrystal.h>
-
-const int rs = 8, en = 9, d4 = 4, d5 = 5, d6 = 6, d7 = 7;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+#include <Wire.h> // Library for I2C communication
+#include <LiquidCrystal_I2C.h> // Library for LCD
+// Wiring: SDA pin is connected to A4 and SCL pin to A5.
+// Connect to LCD via I2C, default address 0x27 (A0-A2 not jumpered)
+LiquidCrystal_I2C lcd = LiquidCrystal_I2C(0x27, 20, 4); // address, chars, rows.
 
 // Реле
-#define PIN_CCW 3          // Поворот против часовой стрелки
-#define PIN_CW 2           // Поворот по часовой стрелки
+#define PIN_CCW 5          // Поворот против часовой стрелки
+#define PIN_CW 4           // Поворот по часовой стрелки
 #define PIN_UP 11          // Актуатор вверх
 #define PIN_DOWN 12        // Актуатор вниз
 #define STEP 1             // Шаг
 #define AZSENSOR A2        // Номер пина для аналогового датчика азимута
 #define ELSENSOR A1        // Номер пина для аналогового датчика элевации
-#define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок A0
-#define ANALOG_KEYS_PIN_A5 A5 // Шина для аналоговых кнопок A5
+#define BTN_CW  10
+#define BTN_CCW 13
+#define BTN_UP 8
+#define BTN_DOWN 9
+#define BTN_APPLY_AZ 7
+#define BTN_APPLY_EL 6
+#define BTN_OPERATE 2
+#define BTN_MODE 3
+//#define ANALOG_KEYS_PIN A0 // Шина для аналоговых кнопок A0
+//#define ANALOG_KEYS_PIN_A5 A5 // Шина для аналоговых кнопок A5
 //петля усреднения
 const int numReadings = 10;
 int readIndexAz = 0;
@@ -42,7 +51,7 @@ boolean operate = false;
 
 // Кнопки
 int adcKeyOld;
-int adcKeyIn;
+int adcKeyIn = 0;
 int NUM_KEYS = 5;
 int key = -1;
 int adcKeyVal[5] = {30, 180, 360, 535, 760}; //Define the value at A0 pin
@@ -156,99 +165,99 @@ void getSensors()
   elSensor();
 }
 
-void getKeysA0()
-{
-  adcKeyIn = analogRead(ANALOG_KEYS_PIN);
-    Serial.print("KEYA0: ");
-  Serial.println(adcKeyIn);
-  adcKeyIn = getKey(adcKeyIn);
+// void getKeysA0()
+// {
+//   adcKeyIn = analogRead(ANALOG_KEYS_PIN);
+//     Serial.print("KEYA0: ");
+//   Serial.println(adcKeyIn);
+//   adcKeyIn = getKey(adcKeyIn);
 
-  if (adcKeyIn == 0)
-  {
-    delay(300);
-    if (azTarget + STEP <= 359)
-      azTarget += STEP;
-  }
+//   if (adcKeyIn == 0)
+//   {
+//     delay(300);
+//     if (azTarget + STEP <= 359)
+//       azTarget += STEP;
+//   }
 
-  if (adcKeyIn == 3)
-  {
-    delay(300);
-    if (azTarget - STEP >= 0)
-      azTarget -= STEP;
-  }
+//   if (adcKeyIn == 3)
+//   {
+//     delay(300);
+//     if (azTarget - STEP >= 0)
+//       azTarget -= STEP;
+//   }
 
-  if (adcKeyIn == 4)
-  {
-    // delay(300);
-    // azMove = true;
-    // strAzTarget = AzElString(azTarget);
-  }
+//   if (adcKeyIn == 4)
+//   {
+//     // delay(300);
+//     // azMove = true;
+//     // strAzTarget = AzElString(azTarget);
+//   }
 
-  if (adcKeyIn == 1)
-  {
-    delay(400);
-    if (elTarget + STEP <= 90)
-      elTarget += STEP;
-  }
+//   if (adcKeyIn == 1)
+//   {
+//     delay(400);
+//     if (elTarget + STEP <= 90)
+//       elTarget += STEP;
+//   }
 
-  if (adcKeyIn == 2)
-  {
-    delay(400);
-    if (elTarget - STEP >= 0)
-      elTarget -= STEP;
-  }
-};
+//   if (adcKeyIn == 2)
+//   {
+//     delay(400);
+//     if (elTarget - STEP >= 0)
+//       elTarget -= STEP;
+//   }
+// };
 
-void getKeysA5()
-{
-  adcKeyIn = analogRead(ANALOG_KEYS_PIN_A5);
-  Serial.print("KEYA5: ");
-  Serial.println(adcKeyIn);
-  adcKeyIn = getKey(adcKeyIn);
+// void getKeysA5()
+// {
+//   adcKeyIn = analogRead(ANALOG_KEYS_PIN_A5);
+//   Serial.print("KEYA5: ");
+//   Serial.println(adcKeyIn);
+//   adcKeyIn = getKey(adcKeyIn);
 
-  if (operate) {
-    if (adcKeyIn == 3)
-    {
-      delay(300);
-      azMove = true;
-    }
-    if (adcKeyIn == 2)
-    {
-      delay(300);
-      elMove = true;
-    }
-  }
+//   if (operate) {
+//     if (adcKeyIn == 3)
+//     {
+//       delay(300);
+//       azMove = true;
+//     }
+//     if (adcKeyIn == 2)
+//     {
+//       delay(300);
+//       elMove = true;
+//     }
+//   }
 
 
-  if (adcKeyIn == 0)
-  {
-    delay(300);
+//   if (adcKeyIn == 0)
+//   {
+//     delay(300);
 
-    if (operate) {
-      operate = false;
-      if (azMove) {
-        azMove = false;
-      }
-      if (elMove) {
-        elMove = false;
-      }
-      digitalWrite(PIN_CW, LOW);
-      digitalWrite(PIN_CCW, LOW);
-      digitalWrite(PIN_UP, LOW);
-      digitalWrite(PIN_DOWN, LOW);
-      lcd.setCursor(13, 1);
-      lcd.print(" ");
-      lcd.setCursor(14, 0);
-      lcd.print(" ");
-      lcd.setCursor(15, 0);
-      lcd.print(" ");
-    } else {
-      operate = true;
-      lcd.setCursor(13, 1);
-      lcd.print(char(1));
-    }
-  }
-};
+//     if (operate) {
+//       operate = false;
+//       if (azMove) {
+//         azMove = false;
+//       }
+//       if (elMove) {
+//         elMove = false;
+//       }
+//       digitalWrite(PIN_CW, LOW);
+//       digitalWrite(PIN_CCW, LOW);
+//       digitalWrite(PIN_UP, LOW);
+//       digitalWrite(PIN_DOWN, LOW);
+//       lcd.setCursor(13, 1);
+//       lcd.print(" ");
+//       lcd.setCursor(14, 0);
+//       lcd.print(" ");
+//       lcd.setCursor(15, 0);
+//       lcd.print(" ");
+//     } else {
+//       operate = true;
+//       lcd.setCursor(13, 1);
+//       lcd.print(char(1));
+//     }
+//   }
+// };
 
 String AzElString(int someIntVolue)
 {
@@ -329,21 +338,6 @@ void down(boolean elMoveFlag) {
   }
 }
 
-int getKey(unsigned int input)
-{
-  int k;
-  for (k = 0; k < NUM_KEYS; k++)
-  {
-    if (input < adcKeyVal[k])
-    {
-      return k;
-    }
-  }
-  if (k >= NUM_KEYS)
-    k = -1; // No valid key pressed
-  return k;
-}
-
 void queueIndicate() {
   if (!operate) {
     if (azMove || elMove) {
@@ -367,7 +361,8 @@ void setup()
   pinMode(PIN_DOWN, OUTPUT);
   pinMode(AZSENSOR, INPUT);
   pinMode(ELSENSOR, INPUT);
-  lcd.begin(16, 2);
+  lcd.begin(20, 4);
+  lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.createChar(1, heart);
   lcd.createChar(2, upArrow);
@@ -393,9 +388,9 @@ void setup()
 void loop()
 {
   getSensors();
-  getKeysA5();
+
   if (operate) {
-    getKeysA0();
+
     if (azMove)
     {
       if (azTarget == azAngle)
